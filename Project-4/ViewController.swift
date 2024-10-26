@@ -9,37 +9,54 @@ import UIKit
 @preconcurrency import WebKit
 
 
-class ViewController: UIViewController, WKNavigationDelegate {
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, WKNavigationDelegate {
     var webView: WKWebView! // Объявление WebView
     var progressView: UIProgressView! // Полоса прогресса для отображения загрузки
     var websites = ["github.com", "apple.com", "hackingwithswift.com"] // Список доступных URL
+    var tableView: UITableView! // Создание таблицы
     
     // Метод для инициализации WebView и назначения его представлением
     override func loadView() {
-//        webView = WKWebView()
-//        webView.navigationDelegate = self // Назначение делегата для обработки навигации
-//        view = webView // Установка WebView в качестве основного представления
+        // Создаем основной UIView
+        let mainView = UIView()
         
-        let mainView = UIView() // Создаем основной UIView
-            webView = WKWebView() // Создаем WKWebView
-            webView.navigationDelegate = self // Назначаем делегата
+        // Создаем и настраиваем WKWebView
+        webView = WKWebView()
+        webView.navigationDelegate = self
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Создаем и настраиваем UITableView
+        tableView = UITableView()
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Добавление таблицы и webView в основной UIView
+        mainView.addSubview(tableView)
+        mainView.addSubview(webView)
+        view = mainView
+        
+        // Настройка ограничений
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.bottomAnchor),
             
-            mainView.addSubview(webView) // Добавляем webView в основной UIView
-            view = mainView // Устанавливаем основной UIView как основное представление
-            
-            // Настройка ограничения для webView с учетом безопасной области
-            webView.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                webView.topAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.topAnchor),
-                webView.bottomAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.bottomAnchor),
-                webView.leadingAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.leadingAnchor),
-                webView.trailingAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.trailingAnchor)
-            ])
+            webView.topAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.bottomAnchor),
+            webView.leadingAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: mainView.safeAreaLayoutGuide.trailingAnchor)
+        ])
+        
+        webView.isHidden = true // Скрываем webView по умолчанию
     }
-    
     // Основной метод загрузки представления
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Регистрируем ячейку для таблицы
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
         
         clearWebKitCache() // Очистка кэша при каждом запуске экрана
         
@@ -49,8 +66,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         let forwardButton = UIBarButtonItem(title: "Вперед", style: .plain, target: self, action: #selector(goForwardTapped))
         
         // Настройка кнопки навигации для открытия списка сайтов
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Відкрити", style: .plain, target: self, action: #selector(openTapped)
-        )
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Відкрити", style: .plain, target: self, action: #selector(openTapped))
         
         // Создание и настройка индикатора прогресса
         progressView = UIProgressView(progressViewStyle: .default)
@@ -65,9 +81,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         navigationController?.isToolbarHidden = false // Отображение панели инструментов
         
         // Загрузка начального URL из списка websites
-        let url = URL(string: "https://" + "github.com/Prysiazhnyi?tab=repositories")!  // websites[0])!
-        webView.load(URLRequest(url: url))
-        webView.allowsBackForwardNavigationGestures = true // Включение навигации вперед и назад
+        //        let url = URL(string: "https://" + "github.com/Prysiazhnyi?tab=repositories")!  // websites[0])!
+        //        webView.load(URLRequest(url: url))
+        //        webView.allowsBackForwardNavigationGestures = true // Включение навигации вперед и назад
         
         // Добавление наблюдателя для отслеживания прогресса загрузки
         webView.addObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), options: .new, context: nil)
@@ -97,9 +113,16 @@ class ViewController: UIViewController, WKNavigationDelegate {
     }
     
     // Метод для загрузки выбранной страницы в WebView
+    //    func openPage(action: UIAlertAction) {
+    //        let url = URL(string: "https://" + action.title!)!
+    //        webView.load(URLRequest(url: url))
+    //    }
+    
     func openPage(action: UIAlertAction) {
         let url = URL(string: "https://" + action.title!)!
         webView.load(URLRequest(url: url))
+        tableView.isHidden = true // Скрываем таблицу
+        webView.isHidden = false // Показываем webView
     }
     
     // Метод делегата для установки заголовка после завершения загрузки страницы
@@ -170,6 +193,26 @@ class ViewController: UIViewController, WKNavigationDelegate {
             webView.goForward()
         }
     }
+    // MARK: - UITableViewDataSource
     
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return websites.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        cell.textLabel?.text = websites[indexPath.row] // Заполняем ячейку названием сайта
+        return cell
+    }
+    
+    // MARK: - UITableViewDelegate
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let url = URL(string: "https://" + websites[indexPath.row])!
+        webView.load(URLRequest(url: url)) // Загружаем выбранный сайт
+        tableView.deselectRow(at: indexPath, animated: true) // Снимаем выделение
+        tableView.isHidden = true // Скрываем таблицу
+        webView.isHidden = false // Показываем webView
+    }
 }
 
